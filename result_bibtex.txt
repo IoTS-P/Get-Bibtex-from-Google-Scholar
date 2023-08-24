@@ -1,0 +1,8 @@
+@inproceedings{cheng2018dtaint,
+  title={DTaint: detecting the taint-style vulnerability in embedded device firmware},
+  author={Cheng, Kai and Li, Qiang and Wang, Lei and Chen, Qian and Zheng, Yaowen and Sun, Limin and Liang, Zhenkai},
+  booktitle={2018 48th Annual IEEE/IFIP International Conference on Dependable Systems and Networks (DSN)},
+  pages={430--441},
+  year={2018},
+  organization={IEEE}
+}
