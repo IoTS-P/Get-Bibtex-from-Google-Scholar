@@ -11,6 +11,7 @@
 ![get-cookie](imgs/get_cookie.png)
 3. 运行`words_to_bibtex.py`。
 4. 查看`result_bibtex.txt`和`result_cite.txt`中的结果。
+5. 如果你是使用代理的，可以在`words_to_bibtex.py`中启用set_proxy函数。
 
 谷歌学术搜索有人机验证，如果跑着跑着突然报错了，只需要在浏览器再次访问[https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=](https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=)，手动过掉这个页面上的人机验证、复制一个新Cookie就OK。
 

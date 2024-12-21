@@ -1,0 +1,22 @@
+Towards automated dynamic analysis for linux-based embedded firmware.
+Metaemu: An architecture agnostic rehosting framework for automotive firmware
+{SFuzz}: Slice-based Fuzzing for Real-Time Operating Systems
+{MultiFuzz}: A Multi-Stream Fuzzer For Testing Monolithic Firmware
+\{{HALucinator}\}: Firmware re-hosting through abstraction layer emulation
+{SplITS}: Split Input-to-State Mapping for Effective Firmware Fuzzing
+\{P2IM\}: Scalable and hardware-independent firmware testing via automatic peripheral interface modeling
+{AIM}: Automatic Interrupt Modeling for Dynamic Firmware Analysis
+{HEAPSTER}: Analyzing the Security of Dynamic Allocators for Monolithic Firmware Images
+{FirmWire}: Transparent Dynamic Analysis for Cellular Baseband Firmware
+Prospect: peripheral proxying supported embedded code testing
+\{{SURROGATES}\}: Enabling \{Near-Real-Time\} dynamic analyses of embedded systems
+A Friend's Eye is A Good Mirror: Synthesizing {MCU} Peripheral Models from Peripheral Drivers
+From library portability to para-rehosting: Natively executing microcontroller software on commodity hardware
+Simics: A full system simulation platform
+$\mu${SBS}: Static Binary Sanitization of Bare-metal Embedded Devices for Fault Observability
+What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices.
+Insight {RSA} 2023: Botnet threat situation observation
+Fuzzware: Using precise \{{MMIO}\} modeling for effective firmware fuzzing
+{HOEDUR}: Embedded Firmware Fuzzing using Multi-Stream Inputs
+What You See is Not What You Get: Revealing Hidden Memory Mapping for Peripheral Modeling
+Identifying Privilege Separation Vulnerabilities in {IoT} Firmware with Symbolic Execution
