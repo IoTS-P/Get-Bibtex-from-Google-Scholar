@@ -4,20 +4,28 @@
 
 ## 1. Python 批量获取 Bibtex
 
-根据关键词列表谷歌学术搜索，批量获取对应的第一个Bibtex。
+根据关键词列表谷歌学术或者dblp中搜索，批量获取对应的第一个Bibtex。
 
-注：谷歌学术搜索支持模糊搜索，所以**可以直接把pdf或word的文献引用一整条复制直接作为关键词**，这样搜索已经足够精确了，完全没必要开高级搜索。
+注：谷歌学术或者dblp均搜索支持模糊搜索，所以**可以直接把pdf或word的文献引用一整条复制直接作为关键词**，这样搜索已经足够精确了，完全没必要开高级搜索。
+
+注：dblp不需要Cookie，但是谷歌学术需要Cookie，所以如果你没有Cookie，可以只使用dblp。
 
 ### 使用方式
 
 1. 在`words.txt`中添加关键词，以换行分隔。
-2. 根据下图，访问[https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=](https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=)获取Cookie，将Cookie填入`words_to_bibtex.py`的`headers['Cookie']=""`中。
+2. （可选）根据下图，访问[https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=](https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=)获取Cookie，将Cookie填入`global_settings.py`的`headers['Cookie']=""`中。
 ![get-cookie](imgs/get_cookie.png)
 3. 运行`words_to_bibtex.py`。
 4. 查看`result_bibtex.txt`和`result_cite.txt`中的结果。
 5. 如果你是使用代理的，可以在`words_to_bibtex.py`中启用set_proxy函数。
 
 谷歌学术搜索有人机验证，如果跑着跑着突然报错了，只需要在浏览器再次访问[https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=](https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=)，手动过掉这个页面上的人机验证、复制一个新Cookie就OK。
+
+### 更多配置
+
+1. 如果你找到了更多网站的支持方式，可以在`global_settings.py`中添加更多的`searchUrlBases`，并提交PR；
+2. 如果你只期望在单个网站中检索，可以在`global_settings.py`中修改`searchWay`；
+3. 如果你发现自己无论如何都无法访问谷歌，可以在`global_settings.py`中修改`proxy_related`为`True`，并在`set_proxy`函数中填入你的代理。
 
 ### 示例
 

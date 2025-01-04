@@ -1,11 +1,24 @@
+# -------------- Basic Settings --------------
+from global_settings import *
+
+import os
+
+# Set working directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+# Set proxy if enabled
+def set_proxy(proxy_url, proxy_port):
+    os.environ['http_proxy'] = f'{proxy_url}:{proxy_port}'
+    os.environ['https_proxy'] = f'{proxy_url}:{proxy_port}'
+
+if proxy_related['enable']:
+    set_proxy(proxy_related['proxy_url'], proxy_related['proxy_port'])
+
+# ------------------- Main -------------------
+
 import requests
 from lxml import etree
-headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-           "Accept-Encoding": "gzip, deflate",
-           "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-           "Referer": "https://scholar.google.com/scholar",
-           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36 Edg/100.0.1185.36"
-}
+
 params={
   "hl": "zh-CN",
   "as_sdt": "0,5",
@@ -19,63 +32,70 @@ params2={
   "hl": "zh-CN",
 }
 
-headers['Cookie']="" # your cookie
-url='https://scholar.google.com/scholar?'
+# Get data function
+def get_data(q, source="google_scholar"):
+    if source not in searchUrlBases:
+        print(f"Source {source} is not supported.")
+        return None
+    
+    # 暂时只支持单页面跳转的检索模式, 也就是只有一个bibtex_route
+    source_settings = searchUrlBases[source]["bibtex_route"][0]
+    url = source_settings["url"]
+    search_url = url.replace("@@", q)
+    need_cookie = source_settings["need_cookie"]
+    headers['Referer'] = search_url.split('?')[0]
+    
+    if need_cookie and headers['Cookie'] == "":
+        print("No Cookie for %s! Please visit this page %s to get your cookie. Now will remove this source from searchWay." % (source, url.replace("@@", "1")))
+        to_delete.append(source)
+        return None
 
-def getData(q):
-  params["q"]=q
-  # get the first article id
-  res = requests.get(url, params=params, headers=headers)
-  content = res.text
-  html = etree.HTML(content)
-  first_div =  html.xpath('//*[@id="gs_res_ccl_mid"]/div[1]')
-  if first_div == []:
-    print(f"{q} not found.")
-    return None
-  data_cid = first_div[0].attrib['data-cid']
-  # get the Bibtex of article
-  params2["q"]=f"info:{data_cid}:scholar.google.com/"
-  res = requests.get(url, params=params2, headers=headers)
-  content = res.text
-  html = etree.HTML(content)
-  bibtex_element =  html.xpath('//*[@id="gs_citi"]/a[1]')
-  if bibtex_element == []:
-    print(f"{q} not found.")
-    return None
-  bibtex_link = bibtex_element[0].attrib['href']
-  # get bibtex result
-  res = requests.get(bibtex_link, headers=headers)
-  return res.text
-  
-if headers['Cookie'] == "":
-  print("No Cookie!!! Please visit this page 'https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=' to get your cookie.")
-  exit(0)
+    # get the first article id
+    res = requests.get(search_url, headers=headers)
+    content = res.text
+    html = etree.HTML(content)
+    dom_xpath = source_settings["dom"]
+    elements =  html.xpath(dom_xpath)
+    if elements == []:
+      print(f"{q} not found in {source}.")
+      return None
+    # 获得第一个文章的bibtex链接
+    bibtex_link = elements[0].attrib['href']
+    # 将".html?view=bibtex"替换为".bib"
+    if "keyword_regex" in source_settings:
+        for old, new in source_settings["keyword_regex"].items():
+            bibtex_link = bibtex_link.replace(old, new)
+    # get bibtex result
+    res = requests.get(bibtex_link, headers=headers)
+    return res.text
 
 to_delete = []
 # remove done
-with open('./done.txt', 'r') as fd:
-  with open('./words.txt', 'r') as f:
+with open('./done.txt', 'r', encoding='utf-8') as fd:
+  with open('./words.txt', 'r', encoding='utf-8') as f:
     done_list = fd.readlines()
     q_list = f.readlines()
     after = list(set(q_list)-set(done_list))
     after.sort(key = q_list.index)
     q_list = after
 
-with open('./words.txt', 'w') as f:
+with open('./words.txt', 'w', encoding='utf-8') as f:
   f.writelines(q_list)
   
 # find
 for q in q_list:
   if q == '\n':
     continue
-  with open('./done.txt', 'a') as fd:
-    with open('./result_bibtex.txt', 'a') as fw:
-      with open('./result_cite.txt', 'a') as fc:
-          result = getData(q)
-          if result != None:
-            fw.write(result+'\n')
-            fc.write(q.split(']')[0]+']\t\cite{'+result.split('\n')[0].split('{')[1][:-1]+'}\n')
-            fd.write(q)
-          elif 'OL]' not in q:
-            print("Error!!! Please visit this page 'https://scholar.google.com/scholar?hl=zh-CN&as_sdt=0%2C5&q=1&btnG=' to pass Robot Captcha, and then reset your cookie.")
-            break
+  with open('./done.txt', 'a', encoding='utf-8') as fd:
+    with open('./result_bibtex.txt', 'a', encoding='utf-8') as fw:
+      with open('./result_cite.txt', 'a', encoding='utf-8') as fc:
+          for search_way in searchWay:
+            result = get_data(q, search_way)
+            if result != None:
+              fw.write(result+'\n')
+              fc.write(q.split(']')[0].strip()+'\t\cite{'+result.split('\n')[0].split('{')[1][:-1]+'}\n')
+              fd.write(q)
+          if to_delete != []:
+              for source in to_delete:
+                  searchWay.remove(source)
+              to_delete = []
