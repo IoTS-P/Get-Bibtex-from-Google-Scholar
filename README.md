@@ -1,6 +1,6 @@
 # Get Bibtex from Google Scholar
 
-本仓库分成两种不同的使用方式，一种是使用python中谷歌学术中批量获取Bibtex，另一种是使用浏览器插件直接在dblp中获取Bibtex。
+本仓库分成两种不同的使用方式，一种是使用python中谷歌学术中批量获取Bibtex，另一种是使用浏览器插件直接在dblp中获取Bibtex。【但现在只保留了python使用方式，浏览器插件另外开了个仓库，见下面第二部分】
 
 ## 1. Python 批量获取 Bibtex
 
@@ -62,8 +62,7 @@
 
 ### 使用方式
 
-1. 首先，你需要安装油猴插件，如果不知道怎么装请看我的视频：[【浏览器脚本入门】①下载油猴_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1AN4y1Y7mo)
-2. 其次，你可以通过 Greasy Fork 安装我的脚本：[选择文本并自动获取BibTex到剪切板](https://greasyfork.org/zh-CN/scripts/522825-%E9%80%89%E6%8B%A9%E6%96%87%E6%9C%AC%E5%B9%B6%E8%87%AA%E5%8A%A8%E8%8E%B7%E5%8F%96bibtex%E5%88%B0%E5%89%AA%E5%88%87%E6%9D%BF)
+详见新仓库：[https://github.com/shandianchengzi/DBLP-BibTex-dump](https://github.com/shandianchengzi/DBLP-BibTex-dump)
 
 ## 可加功能
 
