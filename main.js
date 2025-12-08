@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         选择文本并自动获取BibTex到剪切板
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  在网页左下角生成一个按钮，从dblp中获取选定文本的BibTeX并复制到剪贴板。支持批量获取，支持从剪贴板读取，支持随时下载。
+// @version      1.4
+// @description  在网页左下角生成一个按钮，从dblp中获取选定文本的BibTeX并复制到剪贴板。支持批量获取，支持从剪贴板读取，支持随时下载，支持导出URL和CSV。
 // @author       shandianchengzi
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -21,14 +21,14 @@ const css = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.5); /* 50% transparency as requested */
+    background-color: rgba(0, 0, 0, 0.85);
     color: white;
     padding: 25px;
     border-radius: 10px;
     z-index: 100000;
     text-align: center;
-    min-width: 320px;
-    max-width: 80%;
+    min-width: 400px;
+    max-width: 90%;
     backdrop-filter: blur(5px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -45,50 +45,55 @@ const css = `
 #dblp-batch-current {
     font-size: 14px;
     margin-bottom: 20px;
-    color: #eee;
+    color: #ccc;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 400px;
+    max-width: 450px;
     margin-left: auto;
     margin-right: auto;
+    min-height: 20px;
 }
 
 .dblp-btn {
     border: none;
-    border-radius: 20px;
-    padding: 8px 20px;
+    border-radius: 6px;
+    padding: 8px 15px;
     cursor: pointer;
     font-weight: bold;
     transition: all 0.2s;
     margin: 5px;
     outline: none;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #dblp-btn-download {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
+#dblp-btn-download:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(118, 75, 162, 0.4); }
 
-#dblp-btn-download:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+#dblp-btn-copy-urls {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
 }
+#dblp-btn-copy-urls:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(56, 239, 125, 0.4); }
 
-#dblp-btn-download:active {
-    transform: translateY(0);
+#dblp-btn-csv {
+    background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
+    color: white;
 }
+#dblp-btn-csv:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(255, 94, 98, 0.4); }
 
 #dblp-btn-close {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(255, 255, 255, 0.15);
+    color: #ddd;
+    border: 1px solid rgba(255,255,255,0.2);
 }
-
-#dblp-btn-close:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
+#dblp-btn-close:hover { background: rgba(255, 255, 255, 0.25); color: white; }
 
 /* Confirm Modal */
 #dblp-confirm-modal {
@@ -132,7 +137,7 @@ function Toast(msg, duration) {
   duration = isNaN(duration) ? 3000 : duration;
   var m = document.createElement('div');
   m.innerHTML = msg;
-  m.style.cssText = "font-family: 'siyuan'; max-width: 60%; min-width: 150px; padding: 0 14px; height: auto; color: rgb(255, 255, 255); line-height: 1.5; text-align: center; border-radius: 4px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999999; background: rgba(0, 0, 0, 0.7); font-size: 16px;";
+  m.style.cssText = "font-family: 'siyuan'; max-width: 60%; min-width: 150px; padding: 10px 14px; height: auto; color: rgb(255, 255, 255); line-height: 1.5; text-align: center; border-radius: 4px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999999; background: rgba(0, 0, 0, 0.7); font-size: 16px;";
   document.body.appendChild(m);
   setTimeout(function() {
       m.style.transition = 'opacity 0.5s ease-in';
@@ -163,14 +168,15 @@ var headers = {
     done_copy: "已完成并复制！",
     batch_title: (cur, total) => `批量提取中: ${cur} / ${total}`,
     batch_done_title: "批量提取完成",
-    download_btn: "下载当前结果 (.bib)",
-    close_btn: "关闭",
+    download_btn: "下载 BibTeX (.bib)",
+    copy_urls_btn: "仅复制 URL",
+    csv_btn: "下载表格 (.csv)",
+    close_btn: "关闭面板",
     current_prefix: "正在搜索: ",
-    default_btn: "Get BibTeX"
+    default_btn: "Get BibTeX",
+    urls_copied: "URLs 已复制到剪贴板！"
   };
 
-  // Adjust language strings... (omitted detailed switch for brevity, using defaults mixed with CN logic above as requested)
-  // Re-implementing basic language switch for robust support
   if (!lang.startsWith('zh')) {
       lang_hint = {
           error_no_text: "No text selected and clipboard is empty!",
@@ -180,10 +186,13 @@ var headers = {
           done_copy: "Done & Copied!",
           batch_title: (cur, total) => `Processing: ${cur} / ${total}`,
           batch_done_title: "Batch Complete",
-          download_btn: "Download Results (.bib)",
+          download_btn: "Download BibTeX",
+          copy_urls_btn: "Copy URLs",
+          csv_btn: "Download CSV",
           close_btn: "Close",
           current_prefix: "Searching: ",
-          default_btn: "Get BibTeX"
+          default_btn: "Get BibTeX",
+          urls_copied: "URLs copied to clipboard!"
       };
   }
 
@@ -202,8 +211,14 @@ var headers = {
   overlay.innerHTML = `
       <div id="dblp-batch-title"></div>
       <div id="dblp-batch-current"></div>
-      <button id="dblp-btn-download" class="dblp-btn">${lang_hint.download_btn}</button>
-      <button id="dblp-btn-close" class="dblp-btn" style="display:none">${lang_hint.close_btn}</button>
+      <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+             <button id="dblp-btn-download" class="dblp-btn">${lang_hint.download_btn}</button>
+             <button id="dblp-btn-csv" class="dblp-btn">${lang_hint.csv_btn}</button>
+             <button id="dblp-btn-copy-urls" class="dblp-btn">${lang_hint.copy_urls_btn}</button>
+        </div>
+        <button id="dblp-btn-close" class="dblp-btn" style="display:none; width: 120px;">${lang_hint.close_btn}</button>
+      </div>
   `;
   document.body.appendChild(overlay);
 
@@ -221,17 +236,55 @@ var headers = {
   document.body.appendChild(confirmModal);
 
   // --- Logic Variables ---
-  let batchResults = [];
+  let batchResults = []; // Stores BibTeX strings
+  let batchLines = [];   // Stores original queries
   let isBatchProcessing = false;
 
   // --- Helper Functions ---
+
+  // Robust function to extract fields from BibTeX (handles nested braces and multi-lines)
+  function extractBibField(bibtex, fieldName) {
+    if (!bibtex || bibtex === "None") return "None";
+
+    // 1. Locate "fieldName =" or "fieldName =" ignoring case
+    const regex = new RegExp(`${fieldName}\\s*=\\s*\\{`, "i");
+    const match = bibtex.match(regex);
+
+    if (!match) return "None";
+
+    // 2. Iterate characters to find the matching closing brace
+    let openCount = 1;
+    let content = "";
+    // Start after the opening '{'
+    let startIndex = match.index + match[0].length;
+
+    for (let i = startIndex; i < bibtex.length; i++) {
+        const char = bibtex[i];
+        if (char === '{') {
+            openCount++;
+        } else if (char === '}') {
+            openCount--;
+        }
+
+        if (openCount === 0) {
+            break;
+        }
+        content += char;
+    }
+
+    // 3. Clean up the extracted content
+    // Replace newlines and multiple spaces with a single space
+    // Also remove any surrounding braces if they were part of formatting (e.g. {{Title}}) -> {Title}
+    // But usually we just want the raw content. The loop extracts everything INSIDE the outer field braces.
+    return content.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+  }
 
   function downloadContent(content, filename) {
       const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename || 'dblp_bibtex_results.bib';
+      a.download = filename || 'download.txt';
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
@@ -280,15 +333,72 @@ var headers = {
   const titleEl = document.getElementById('dblp-batch-title');
   const currentEl = document.getElementById('dblp-batch-current');
   const downloadBtn = document.getElementById('dblp-btn-download');
+  const csvBtn = document.getElementById('dblp-btn-csv');
+  const copyUrlsBtn = document.getElementById('dblp-btn-copy-urls');
   const closeBtn = document.getElementById('dblp-btn-close');
 
+  // Helper to get valid results so far
+  function getResultsSoFar() {
+      // Return objects { line, bib } only for processed items
+      return batchLines.map((line, idx) => ({
+          line: line,
+          bib: batchResults[idx]
+      })).filter(item => item.bib !== null && item.bib !== undefined);
+  }
+
   downloadBtn.onclick = () => {
-      const content = batchResults.filter(r => r !== null).map(r => r === "None" ? "% Failed to fetch item" : r).join('\n\n');
-      downloadContent(content);
+      const results = getResultsSoFar();
+      if(results.length === 0) { Toast("Nothing fetched yet."); return; }
+      const content = results.map(r => r.bib === "None" ? `% Failed to fetch: ${r.line}` : r.bib).join('\n\n');
+      downloadContent(content, 'dblp_bibtex.bib');
+  };
+
+  copyUrlsBtn.onclick = () => {
+      const results = getResultsSoFar();
+      if(results.length === 0) { Toast("Nothing fetched yet."); return; }
+
+      const urlList = results.map(r => {
+          if (r.bib === "None") return "None";
+          return extractBibField(r.bib, "url");
+      }).join('\n');
+
+      GM_setClipboard(urlList);
+      Toast(lang_hint.urls_copied);
+  };
+
+  csvBtn.onclick = () => {
+      const results = getResultsSoFar();
+      if(results.length === 0) { Toast("Nothing fetched yet."); return; }
+
+      // CSV Header
+      // BOM (\uFEFF) is added so Excel opens it in UTF-8 correctly
+      let csvContent = "\uFEFF原始搜索词,提取标题,URL,BibTeX\n";
+
+      // Escape CSV value: wrap in quotes, escape double quotes as ""
+      const esc = (val) => {
+          if (val === null || val === undefined) return "";
+          val = String(val);
+          if (val.search(/("|,|\n|\r)/g) >= 0) {
+              return `"${val.replace(/"/g, '""')}"`;
+          }
+          return val;
+      };
+
+      csvContent += results.map(r => {
+          if (r.bib === "None") {
+              return `${esc(r.line)},None,None,None`;
+          }
+          const title = extractBibField(r.bib, "title");
+          const url = extractBibField(r.bib, "url");
+          return `${esc(r.line)},${esc(title)},${esc(url)},${esc(r.bib)}`;
+      }).join('\n');
+
+      downloadContent(csvContent, 'dblp_results.csv');
   };
 
   closeBtn.onclick = () => {
       overlay.style.display = 'none';
+      isBatchProcessing = false; // Stop if closed early? Or just hide.
   };
 
   // Clipboard Confirm Logic
@@ -296,7 +406,7 @@ var headers = {
       return new Promise((resolve) => {
           document.getElementById('dblp-confirm-text').innerText = text.length > 200 ? text.substring(0, 200) + '...' : text;
           confirmModal.style.display = 'block';
-          
+
           document.getElementById('dblp-confirm-yes').onclick = () => {
               confirmModal.style.display = 'none';
               resolve(true);
@@ -315,7 +425,7 @@ var headers = {
       }
 
       let selection = window.getSelection().toString().trim();
-      
+
       // Fallback to clipboard
       if (!selection) {
           try {
@@ -357,54 +467,46 @@ var headers = {
       } else {
           // Batch Mode
           isBatchProcessing = true;
+          batchLines = lines;
           batchResults = new Array(lines.length).fill(null);
           let completedCount = 0;
 
           // Init UI
           overlay.style.display = 'block';
           closeBtn.style.display = 'none';
-          downloadBtn.style.display = 'inline-block';
-          downloadBtn.innerText = lang_hint.download_btn;
-          
+          // All buttons visible now to support "Download while fetching"
+          // We assume user knows that incomplete items won't be in the download
+
           titleEl.innerText = lang_hint.batch_title(0, lines.length);
           currentEl.innerText = "Initializing...";
 
-          // Process Loop
-          // We use a recursive function or async loop to allow UI updates for "Current Item"
-          // But to be fast, we can run them with small delays.
-          
           lines.forEach((line, index) => {
               setTimeout(() => {
-                  // Update UI to show what we are starting now
-                  if (isBatchProcessing) {
-                      currentEl.innerText = lang_hint.current_prefix + line;
-                  }
+                  if (!isBatchProcessing) return; // Stop if canceled/closed logic added later
+
+                  currentEl.innerText = lang_hint.current_prefix + line;
 
                   fetchBibTeX(line, true, (result) => {
-                      // Save result
-                      batchResults[index] = result === "None" ? `% Failed to fetch: ${line}` : result;
+                      batchResults[index] = result === "None" ? "None" : result;
                       completedCount++;
 
-                      // Update Progress
                       if (isBatchProcessing) {
                           titleEl.innerText = lang_hint.batch_title(completedCount, lines.length);
                       }
 
-                      // Finished?
                       if (completedCount === lines.length) {
                           isBatchProcessing = false;
                           titleEl.innerText = lang_hint.batch_done_title;
                           currentEl.innerText = "";
                           closeBtn.style.display = 'inline-block';
-                          downloadBtn.innerText = "下载全部结果";
-                          
-                          // Auto Copy
-                          const finalContent = batchResults.join('\n\n');
+
+                          // Auto Copy BibTeX (optional, maybe annoying for huge lists, but requested in v1)
+                          const finalContent = batchResults.map(r => r === "None" ? "% Failed" : r).join('\n\n');
                           GM_setClipboard(finalContent);
                           Toast(lang_hint.done_copy);
                       }
                   });
-              }, index * 800); // 800ms stagger to be polite to DBLP and let user see the "Current" text
+              }, index * 800);
           });
       }
   });
